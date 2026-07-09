@@ -36,7 +36,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # الرابط الخاص بك من Google Apps Script (تأكد أنه ينتهي بـ /exec)
-script_url = "ضع_رابط_الويب_أب_هنا"
+script_url = "https://script.google.com/macros/s/AKfycbyfV8qjxaEKSwbOc4xfEPoBYCWaq5wwQB2MgbyZjq3fq7ptzqAdTxtX1JVE62J0g9WS/exec"
 
 with st.form(key="survey_form"):
     work_style = st.select_slider("1. أسلوبي العام في العمل وتنسيق المهام:", options=[1, 2, 3, 4, 5], value=3)
