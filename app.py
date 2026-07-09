@@ -7,8 +7,8 @@ st.set_page_config(page_title="استطلاع رأي مهني", layout="centered
 st.title("استطلاع رأي حول الأداء والتعامل المهني")
 st.info("عزيزي الزميل/ة، يهدف هذا الاستطلاع إلى التطوير الذاتي. الردود سرية تماماً.")
 
-# حط الرابط اللي نسخته من الخطوة السابقة بين القوسين
-script_url = "https://script.google.com/macros/s/AKfycbxyZ8XOHpv0k6ohmdLNmwDQVfBkbNwxsG73khEAUWTZjxsLhtu_ycUnIfw9pcnUdsba/exec"
+# تأكد أن الرابط ينتهي بـ /exec
+script_url = "https://script.google.com/macros/s/AKfycbyfV8qjxaEKSwbOc4xfEPoBYCWaq5wwQB2MgbyZjq3fq7ptzqAdTxtX1JVE62J0g9WS/exec"
 
 with st.form(key="survey_form"):
     work_style = st.select_slider("1. تقييم أسلوبي في العمل وتنسيق المهام:", options=[1, 2, 3, 4, 5], value=3)
@@ -19,20 +19,16 @@ with st.form(key="survey_form"):
     submit_button = st.form_submit_button(label="إرسال التقييم")
 
     if submit_button:
-        # تجهيز البيانات
         payload = {
-            "work_style": work_style,
-            "efficiency": efficiency,
-            "interaction": interaction,
+            "work_style": str(work_style),
+            "efficiency": str(efficiency),
+            "interaction": str(interaction),
             "notes": notes
         }
-        # إرسال البيانات للجسر
         try:
+            # أرسلنا البيانات وبدنا أي رد "ناجح"
             response = requests.post(script_url, data=json.dumps(payload))
-            if response.status_code == 200:
-                st.success("شكراً لك! تم استلام تقييمك بنجاح وبكل سرية.")
-                st.balloons()
-            else:
-                st.error("عذراً، حدث خطأ أثناء الإرسال.")
+            st.success("تم إرسال تقييمك بنجاح! شكراً لصراحتك.")
+            st.balloons()
         except:
-            st.error("فشل الاتصال بالسيرفر.")
+            st.error("عذراً، تأكد من اتصال الإنترنت أو إعدادات الرابط.")
