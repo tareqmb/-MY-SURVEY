@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 import json
+import uuid # مكتبة لتوليد معرف فريد
 from extra_streamlit_components import CookieManager
 
 # إعداد الصفحة
@@ -8,41 +9,41 @@ st.set_page_config(page_title="استطلاع رأي المهني", layout="cent
 
 # تعريف مدير الكوكيز
 cookie_manager = CookieManager()
-
-# نستخدم اسم بصمة فريد لضمان عدم التداخل مع المحاولات السابقة
-COOKIE_NAME = "survey_lock_final_v5"
+COOKIE_NAME = "survey_lock_v5"
+USER_ID_COOKIE = "user_unique_id" # كوكيز لحفظ معرف المستخدم
 
 st.title("استطلاع رأي حول الأداء والتعامل المهني")
 
-# فحص البصمة في المتصفح
+# 1. جلب أو إنشاء معرف فريد للمستخدم (بصمة المتصفح)
+user_id = cookie_manager.get(USER_ID_COOKIE)
+if not user_id:
+    user_id = str(uuid.uuid4())[:8] # توليد كود من 8 أرقام وحروف
+    cookie_manager.set(USER_ID_COOKIE, user_id)
+
+# فحص البصمة لمنع التكرار في الواجهة
 already_submitted = cookie_manager.get(COOKIE_NAME)
 
-# استخدام session_state كدعم إضافي لمنع التكرار في نفس اللحظة
 if "submitted_now" not in st.session_state:
     st.session_state.submitted_now = False
 
-# منطق العرض: إذا أرسل سابقاً (عن طريق الكوكيز أو الجلسة الحالية)
 if already_submitted == "true" or st.session_state.submitted_now:
     st.success("✅ شكرًا لك! لقد تم استلام تقييمك مسبقًا.")
-    st.info("لضمان دقة النتائج، يُسمح بإرسال الرد مرة واحدة فقط لكل زميل.")
-    st.balloons()
-    st.stop() # توقف الكود هنا تماماً للمستخدمين الذين أرسلوا مسبقاً
+    st.info(f"معرفك الخاص للتدقيق: {user_id}") # يظهر للمستخدم كود لا يكشف هويته
+    st.stop()
 
-# إذا لم يرسل مسبقاً، يظهر الاستبيان
 st.markdown("""
-عزيزي الزميل/ة، يهدف هذا الاستطلاع إلى قياس مدى رضاكم عن أسلوبي في العمل وكفاءتي المهنية. 
-هذا الاستبيان **سري تماماً** ولا يتم فيه جمع أي بيانات شخصية أو بريد إلكتروني.
+عزيزي الزميل/ة، يهدف هذا الاستطلاع إلى التطوير الذاتي. 
+هذا الاستبيان **سري تماماً**؛ المعرف الظاهري يُستخدم فقط لمنع تكرار البيانات.
 <hr>
 """, unsafe_allow_html=True)
 
-# الرابط الخاص بك من Google Apps Script (تأكد أنه ينتهي بـ /exec)
 script_url = "https://script.google.com/macros/s/AKfycbyfV8qjxaEKSwbOc4xfEPoBYCWaq5wwQB2MgbyZjq3fq7ptzqAdTxtX1JVE62J0g9WS/exec"
 
 with st.form(key="survey_form"):
     work_style = st.select_slider("1. أسلوبي العام في العمل وتنسيق المهام:", options=[1, 2, 3, 4, 5], value=3)
     efficiency = st.select_slider("2. كفاءتي المهنية وقدرتي على إنجاز العمل:", options=[1, 2, 3, 4, 5], value=3)
     interaction = st.select_slider("3. المعاملة الشخصية والتواصل الإنساني معكم:", options=[1, 2, 3, 4, 5], value=3)
-    notes = st.text_area("ملاحظات إضافية أو نصائح للتطوير (اختياري):")
+    notes = st.text_area("ملاحظات إضافية (اختياري):")
     
     submit_button = st.form_submit_button(label="إرسال التقييم")
 
@@ -51,32 +52,23 @@ if submit_button:
         "work_style": str(work_style),
         "efficiency": str(efficiency),
         "interaction": str(interaction),
-        "notes": notes
+        "notes": notes,
+        "user_id": user_id # إرسال المعرف الفريد مع البيانات
     }
     
     try:
-        # إرسال البيانات إلى جوجل شيت
         response = requests.post(script_url, data=json.dumps(payload), timeout=10)
         
         if response.status_code == 200:
-            # 1. زرع البصمة في المتصفح للمرات القادمة
             cookie_manager.set(COOKIE_NAME, "true")
-            
-            # 2. تحديث حالة الجلسة الحالية للإخفاء الفوري
             st.session_state.submitted_now = True
-            
-            # 3. إظهار رسالة النجاح
-            st.success("تم إرسال تقييمك بنجاح! شكراً لصراحتك ووقتك.")
+            st.success(f"تم الإرسال بنجاح! معرفك للتدقيق هو: {user_id}")
             st.balloons()
-            
-            # 4. إعادة تشغيل بسيطة لتنظيف الشاشة وإظهار رسالة المنع
             st.rerun()
         else:
-            st.error("فشل الإرسال، يرجى التأكد من رابط جوجل شيت وصلاحيات الوصول.")
-            
+            st.error("فشل الإرسال، حاول لاحقاً.")
     except Exception as e:
-        # التعامل مع استثناء إعادة التشغيل الخاص بـ Streamlit
         if "Rerun" in str(type(e)):
             raise e
         else:
-            st.error("حدث خطأ تقني، يرجى المحاولة مرة أخرى.")
+            st.error("حدث خطأ تقني.")
