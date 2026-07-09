@@ -37,7 +37,7 @@ st.markdown("""
 <hr>
 """, unsafe_allow_html=True)
 
-script_url = "https://script.google.com/macros/s/AKfycbyfV8qjxaEKSwbOc4xfEPoBYCWaq5wwQB2MgbyZjq3fq7ptzqAdTxtX1JVE62J0g9WS/exec"
+script_url = "https://script.google.com/macros/s/AKfycbw0MVjJ6x0sFzFWQri9Eo5e63-UyXCNRGVSd9CHkr4Z-4oft7Ws6ibtXaZ5WvLyJESI/exec"
 
 with st.form(key="survey_form"):
     work_style = st.select_slider("1. أسلوبي العام في العمل وتنسيق المهام:", options=[1, 2, 3, 4, 5], value=3)
