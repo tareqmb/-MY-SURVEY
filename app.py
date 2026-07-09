@@ -25,7 +25,7 @@ if has_submitted == "true":
 else:
     st.info("عزيزي الزميل/ة، يهدف هذا الاستطلاع إلى التطوير الذاتي. الردود سرية تماماً.")
 
-    script_url = "رابط_الويب_أب_الخاص_بك_هنا"
+    script_url = "https://script.google.com/macros/s/AKfycbyfV8qjxaEKSwbOc4xfEPoBYCWaq5wwQB2MgbyZjq3fq7ptzqAdTxtX1JVE62J0g9WS/exec"
 
     with st.form(key="survey_form"):
         work_style = st.select_slider("1. تقييم أسلوبي في العمل وتنسيق المهام:", options=[1, 2, 3, 4, 5], value=3)
