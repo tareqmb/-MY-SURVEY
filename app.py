@@ -5,54 +5,42 @@ import uuid
 import time
 from extra_streamlit_components import CookieManager
 
+# إعداد الصفحة
 st.set_page_config(page_title="استطلاع رأي مهني", layout="centered")
 
-# 1. إعداد مدير الكوكيز
+# 1. إعداد مدير الكوكيز والذاكرة المؤقتة
 cookie_manager = CookieManager()
 
-# انتظار بسيط لضمان توافق المتصفح مع المكون
-time.sleep(0.8) 
+if "my_id" not in st.session_state:
+    st.session_state.my_id = None
+if "form_sent" not in st.session_state:
+    st.session_state.form_sent = False
 
-USER_ID_COOKIE = "user_id_v11"
-SUBMIT_COOKIE = "submitted_v11"
+# اسم الكوكيز
+USER_COOKIE = "survey_uid_v12"
+DONE_COOKIE = "survey_done_v12"
 
 st.title("استطلاع رأي حول الأداء والتعامل المهني")
 
-# 2. محاولة جلب المعرف بأمان
-try:
-    user_id = cookie_manager.get(USER_ID_COOKIE)
-except:
-    user_id = None
+# 2. جلب المعرف (من الكوكيز أو إنشاء واحد جديد)
+cached_uid = cookie_manager.get(USER_COOKIE)
+if cached_uid:
+    st.session_state.my_id = cached_uid
+elif not st.session_state.my_id:
+    st.session_state.my_id = str(uuid.uuid4())[:8]
+    cookie_manager.set(USER_COOKIE, st.session_state.my_id, key="save_uid")
 
-# إذا فشل المتصفح في دعم الكوكيز، نستخدم معرفاً للجلسة الحالية فقط
-if not user_id:
-    if "fallback_id" not in st.session_state:
-        st.session_state.fallback_id = f"guest_{str(uuid.uuid4())[:6]}"
-    
-    # محاولة حفظه في الكوكيز للمرات القادمة (إن أمكن)
-    try:
-        cookie_manager.set(USER_ID_COOKIE, st.session_state.fallback_id, key="save_uid")
-    except:
-        pass
-    
-    user_id = st.session_state.fallback_id
+# 3. فحص إذا كان الزميل أرسل مسبقاً (من الكوكيز أو الجلسة الحالية)
+already_done = cookie_manager.get(DONE_COOKIE)
 
-# 3. فحص حالة الإرسال
-try:
-    already_submitted = cookie_manager.get(SUBMIT_COOKIE)
-except:
-    already_submitted = "false"
-
-if already_submitted == "true":
-    st.success("✅ شكرًا لك! لقد تم استلام تقييمك مسبقًا.")
-    st.stop()
+if already_done == "true" or st.session_state.form_sent:
+    st.success(f"✅ تم استلام تقييمك بنجاح! شكراً لك.")
+    st.info(f"المعرف الخاص بك للتدقيق: {st.session_state.my_id}")
+    st.balloons()
+    st.stop() # يوقف كل شيء ويخلي الرسالة ثابتة
 
 # --- واجهة الاستبيان ---
-st.markdown("""
-عزيزي الزميل/ة، يهدف هذا الاستطلاع إلى التطوير الذاتي وتحسين بيئة العمل. 
-**الردود سرية تماماً.**
-<hr>
-""", unsafe_allow_html=True)
+st.info("عزيزي الزميل/ة، هذا الاستبيان سري تماماً. المعرف يُستخدم فقط لمنع تكرار البيانات.")
 
 script_url = "https://script.google.com/macros/s/AKfycbyfV8qjxaEKSwbOc4xfEPoBYCWaq5wwQB2MgbyZjq3fq7ptzqAdTxtX1JVE62J0g9WS/exec"
 
@@ -62,7 +50,7 @@ with st.form(key="survey_form"):
     interaction = st.select_slider("3. المعاملة الشخصية والتواصل الإنساني معكم:", options=[1, 2, 3, 4, 5], value=3)
     notes = st.text_area("ملاحظات إضافية (اختياري):")
     
-    submit_button = st.form_submit_button(label="إرسال التقييم")
+    submit_button = st.form_submit_button(label="إرسال التقييم الآن")
 
 if submit_button:
     payload = {
@@ -70,30 +58,17 @@ if submit_button:
         "efficiency": str(efficiency),
         "interaction": str(interaction),
         "notes": notes,
-        "user_id": user_id
+        "user_id": st.session_state.my_id
     }
     
     try:
-        # رفع مهلة الانتظار لضمان وصول البيانات حتى لو المتصفح بطيء
         response = requests.post(script_url, data=json.dumps(payload), timeout=15)
-        
         if response.status_code == 200:
-            try:
-                cookie_manager.set(SUBMIT_COOKIE, "true", key="save_submit")
-            except:
-                pass
-            
-            st.success("تم إرسال تقييمك بنجاح! شكراً لك.")
-            st.balloons()
-            time.sleep(1)
-            st.rerun()
+            # زرع الكوكي وتحديث حالة الجلسة
+            cookie_manager.set(DONE_COOKIE, "true", key="save_done")
+            st.session_state.form_sent = True
+            st.rerun() # يعيد التشغيل ليظهر رسالة النجاح الثابتة في الأعلى
         else:
-            st.error(f"خطأ في استجابة السيرفر (كود: {response.status_code})")
-    except Exception as e:
-        # هنا أضفنا تفاصيل أكثر لنعرف سبب "الخطأ الفني"
-        if "Rerun" in str(type(e)):
-            raise e
-        else:
-            st.error(f"حدث خطأ أثناء الإرسال. يرجى التأكد من استقرار الإنترنت.")
-            # طباعة الخطأ في سجلات الموقع عندك (لا يراها المستخدم)
-            print(f"DEBUG: {e}")
+            st.error("فشل الإرسال للسيرفر، يرجى المحاولة مرة أخرى.")
+    except:
+        st.error("حدث خطأ تقني، يرجى التأكد من الإنترنت.")
