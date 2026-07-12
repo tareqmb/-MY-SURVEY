@@ -54,6 +54,22 @@ if st.session_state.submitted:
     st.success("✅ شكراً لك! تم استلام تقييمك بنجاح.")
     st.stop()
 
+# ضع الرابط الخاص بك هنا (تأكد أنه بين علامتي التنصيص "")
+script_url = "https://script.google.com/macros/s/AKfycbxLsDcgEpWtw0sPNTsLdjILT099ElJzeEoyP6PvANFnbVJtLiDBlrnz-6EFbKShpAuB/exec"
+
+# سؤال السكربت مسبقاً: هل هذا الرمز قدّم الاستبيان من قبل؟
+if "already_submitted" not in st.session_state:
+    try:
+        check_resp = requests.get(script_url, params={"token": respondent_token}, timeout=10)
+        st.session_state.already_submitted = check_resp.json().get("submitted", False)
+    except Exception:
+        # تعذّر التحقق (مشكلة اتصال) - نفترض عدم التقديم ونكمل بشكل طبيعي
+        st.session_state.already_submitted = False
+
+if st.session_state.already_submitted:
+    st.info("يبدو أنك قدّمت هذا التقييم مسبقاً، شكراً لمشاركتك!")
+    st.stop()
+
 # --- واجهة الاستبيان ---
 st.markdown("""
 عزيزي الزميل/ة، هذا الاستطلاع **مجهول بالكامل بالنسبة لي**؛ لا أستطيع ولا أرغب
@@ -61,9 +77,6 @@ st.markdown("""
 عنك) هدفه الوحيد منع تكرار التعبئة أكثر من مرة. هدف الاستبيان تحسين الأداء والتعامل المهني.
 <hr>
 """, unsafe_allow_html=True)
-
-# ضع الرابط الخاص بك هنا (تأكد أنه بين علامتي التنصيص "")
-script_url = "https://script.google.com/macros/s/AKfycbyfsflx-R7xMJ_91nmoo3rYKd4FZ2qfzIT-HSzyg7BH9hOpYl0Lyx80im5YvTteoM24/exec"
 
 with st.form(key="survey_form"):
     st.caption("مقياس التقييم: 1 = ضعيف  ←  →  5 = قوي")
@@ -94,9 +107,14 @@ if submit_button:
     }
 
     try:
-        requests.post(script_url, data=json.dumps(payload), timeout=15)
+        resp = requests.post(script_url, data=json.dumps(payload), timeout=15)
+        status = resp.json().get("status", "success")
     except Exception:
-        pass
+        status = "success"  # تعذّر التأكد من الاستجابة، نعرض رسالة عامة للزميل
 
-    st.session_state.submitted = True
+    if status == "duplicate":
+        st.session_state.already_submitted = True
+    else:
+        st.session_state.submitted = True
+
     st.rerun()
