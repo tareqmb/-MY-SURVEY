@@ -26,20 +26,29 @@ cookie_manager = stx.CookieManager(key="cookie_manager")
 if "cookie_checked" not in st.session_state:
     st.session_state.cookie_checked = False
     st.session_state.survey_token = None
+    st.session_state.cookie_retry_count = 0
+
+MAX_COOKIE_RETRIES = 3
 
 if not st.session_state.cookie_checked:
     existing_token = cookie_manager.get(cookie="survey_token")
-    st.session_state.cookie_checked = True
     if existing_token is not None:
         st.session_state.survey_token = existing_token
+        st.session_state.cookie_checked = True
     else:
-        # قد يكون هذا مجرد تأخر بمزامنة المكوّن مع المتصفح، لا "غياب فعلي" للكوكيز
-        # ننتظر دورة تحميل إضافية قبل الحسم بأنها زيارة جديدة فعلاً
-        st.session_state.cookie_checked = False
-        st.stop()
+        st.session_state.cookie_retry_count += 1
+        if st.session_state.cookie_retry_count >= MAX_COOKIE_RETRIES:
+            # بعض المتصفحات (مثل Safari على الموبايل) تمنع كوكيز مكوّنات الـ iframe
+            # (ITP) فلا تصل القيمة أبداً. بعد عدة محاولات، نتوقف عن الانتظار
+            # ونكمل بدون كوكيز دائمة (فقدان جزئي لحماية التكرار على هذا المتصفح تحديداً)
+            st.session_state.cookie_checked = True
+        else:
+            # قد يكون هذا مجرد تأخر بمزامنة المكوّن مع المتصفح، لا "غياب فعلي" للكوكيز
+            # ننتظر دورة تحميل إضافية قبل الحسم بأنها زيارة جديدة فعلاً
+            st.stop()
 
 if st.session_state.survey_token is None:
-    # بعد التأكد الفعلي من غياب الكوكيز، ننشئ رمزاً جديداً مرة واحدة فقط
+    # إما زيارة جديدة فعلاً، أو تعذّر الوصول للكوكيز بعد المحاولات المسموحة
     st.session_state.survey_token = str(uuid.uuid4())
     cookie_manager.set("survey_token", st.session_state.survey_token, key="set_token")
 
@@ -55,7 +64,7 @@ if st.session_state.submitted:
     st.stop()
 
 # ضع الرابط الخاص بك هنا (تأكد أنه بين علامتي التنصيص "")
-script_url = "https://script.google.com/macros/s/AKfycbwj8z2I8Sc8yPovWeWZ2xHyTLbIQIeBTHU-Rc-qYw1sQ0VFjyRI3OIOHP-CL6putYD8/exec"
+script_url = "https://script.google.com/macros/s/AKfycbxLsDcgEpWtw0sPNTsLdjILT099ElJzeEoyP6PvANFnbVJtLiDBlrnz-6EFbKShpAuB/exec"
 
 # سؤال السكربت مسبقاً: هل هذا الرمز قدّم الاستبيان من قبل؟
 if "already_submitted" not in st.session_state:
