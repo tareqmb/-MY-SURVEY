@@ -77,7 +77,7 @@ if st.session_state.submitted:
     st.stop()
 
 # ضع الرابط الخاص بك هنا (تأكد أنه بين علامتي التنصيص "")
-script_url = "https://script.google.com/macros/s/AKfycbxLsDcgEpWtw0sPNTsLdjILT099ElJzeEoyP6PvANFnbVJtLiDBlrnz-6EFbKShpAuB/exec"
+script_url = "https://script.google.com/macros/s/AKfycbxT4UXKVfbe0P3XyzD--0l49b9GdnMwzNm9depvX3xTTx-_90bC13kGdaC0Z_31sHg9/exec"
 
 # سؤال السكربت مسبقاً: هل هذا الرمز قدّم الاستبيان من قبل؟
 if "already_submitted" not in st.session_state:
